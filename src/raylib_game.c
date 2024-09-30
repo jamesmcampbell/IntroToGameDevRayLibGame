@@ -55,12 +55,31 @@ static void UpdateDrawFrame(void);          // Update and draw one frame
 //----------------------------------------------------------------------------------
 // Main entry point
 //----------------------------------------------------------------------------------
+
+typedef enum {
+    GAME_START,
+    GAME_PLAYING,
+    GAME_PAUSED,
+    GAME_OVER
+} GameState;
+
+GameState currentState = GAME_START;
+
 int main(void)
 {
+    Rectangle rect = { 
+        screenWidth / 2 - 50, 
+        screenHeight / 2 - 50, 
+        50, 
+        50 
+    }; // x, y, width, height
+    float speed = 5;
+    
     // Initialization
     //---------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "raylib game template");
-
+    SetTargetFPS(20);
+    
     InitAudioDevice();      // Initialize audio device
 
     // Load global data (assets that must be available in all screens, i.e. font)
@@ -75,37 +94,43 @@ int main(void)
     currentScreen = LOGO;
     InitLogoScreen();
 
-#if defined(PLATFORM_WEB)
-    emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
-#else
-    SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
-
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
-        UpdateDrawFrame();
+        switch(currentState) {
+            case GAME_START:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                
+                DrawText("IntroToGameDevRayLibGame", screenWidth/4, 100, 40, BLUE);
+                DrawText("Press ENTER to start", 270, 200, 30, GREEN);
+                
+                EndDrawing();
+                if (IsKeyPressed(KEY_ENTER)) {
+                    currentState = GAME_PLAYING;
+                }
+                break;
+            case GAME_PLAYING:
+                // Update
+                if (IsKeyDown(KEY_UP)) rect.y -= speed;
+                if (IsKeyDown(KEY_DOWN)) rect.y += speed;
+                if (IsKeyDown(KEY_LEFT)) rect.x -= speed;
+                if (IsKeyDown(KEY_RIGHT)) rect.x += speed;
+
+                // Ensure the rectangle stays within the screen boundaries
+                if (rect.x < 0) rect.x = 0;
+                if (rect.y < 0) rect.y = 0;
+                if (rect.x + rect.width > screenWidth) rect.x = screenWidth - rect.width;
+                if (rect.y + rect.height > screenHeight) rect.y = screenHeight - rect.height;
+
+                // Draw
+                BeginDrawing();
+                ClearBackground(GREEN);
+                DrawRectangleRec(rect, WHITE);
+                EndDrawing();
+                break;
+        }
     }
-#endif
-
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    // Unload current screen data before closing
-    switch (currentScreen)
-    {
-        case LOGO: UnloadLogoScreen(); break;
-        case TITLE: UnloadTitleScreen(); break;
-        case GAMEPLAY: UnloadGameplayScreen(); break;
-        case ENDING: UnloadEndingScreen(); break;
-        default: break;
-    }
-
-    // Unload global data loaded
-    UnloadFont(font);
-    UnloadMusicStream(music);
-    UnloadSound(fxCoin);
-
-    CloseAudioDevice();     // Close audio context
 
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
